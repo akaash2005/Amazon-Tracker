@@ -1,17 +1,24 @@
 import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { initializeDatabase } from './database.js';
 import { setupProductRoutes } from './routes/productRoutes.js';
 import { updateAllProductPrices } from './services/priceService.js';
 
-const express = require('express');
-const path = require('path');
+// Fix for __dirname in ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Serve static files from the Vite build directory
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Serve static frontend
 app.use(express.static(path.join(__dirname, '..', 'dist')));
 
 // Fallback to index.html for SPA routing
@@ -19,17 +26,11 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
 });
 
-// Initialize database
+// Initialize database and routes
 initializeDatabase();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Routes
 setupProductRoutes(app);
 
-// Schedule price updates (every hour)
+// Schedule price updates every hour
 cron.schedule('0 * * * *', async () => {
   console.log('Running scheduled price update...');
   try {
