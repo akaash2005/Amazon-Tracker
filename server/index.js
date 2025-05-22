@@ -5,8 +5,19 @@ import { initializeDatabase } from './database.js';
 import { setupProductRoutes } from './routes/productRoutes.js';
 import { updateAllProductPrices } from './services/priceService.js';
 
+const express = require('express');
+const path = require('path');
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
+
+// Serve static files from the Vite build directory
+app.use(express.static(path.join(__dirname, '..', 'dist')));
+
+// Fallback to index.html for SPA routing
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'dist', 'index.html'));
+});
 
 // Initialize database
 initializeDatabase();
