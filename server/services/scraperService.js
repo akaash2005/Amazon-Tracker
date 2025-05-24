@@ -1,43 +1,57 @@
-import * as cheerio from 'cheerio';
 import axios from 'axios';
+import * as cheerio from 'cheerio';
 
 export async function scrapeProductDetails(url) {
   if (!url || !url.includes("amazon.")) {
     throw new Error("Invalid Amazon product URL");
   }
 
-  const headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-    'Accept-Language': 'en-IN,en;q=0.9',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Connection': 'keep-alive',
-    'Referer': 'https://www.google.com/'
-  };
-
   try {
-    const response = await axios.get(url, { headers });
+    const { data: html } = await axios.get(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-IN,en;q=0.9',
+        'Referer': 'https://www.google.com/',
+      },
+    });
 
-    const $ = cheerio.load(response.data);
+    const $ = cheerio.load(html);
 
-    const title = $('#productTitle').text().trim();
-    const currentPrice = $('#priceblock_ourprice, #priceblock_dealprice, #priceblock_saleprice')
-      .first()
-      .text()
-      .trim()
-      .replace(/[^\d.]/g, '');
+    const title = $('#productTitle').text().trim() || 'Unknown Product';
+    const currentPrice =
+      $('#priceblock_dealprice').text().trim() ||
+      $('#priceblock_ourprice').text().trim() ||
+      $('#priceblock_saleprice').text().trim() ||
+      $('#tp_price_block_total_price_ww').text().trim() ||
+      null;
 
-    const image = $('#imgTagWrapperId img').attr('src');
+    const image =
+      $('#landingImage').attr('src') ||
+      $('#imgTagWrapperId img').attr('data-old-hires') ||
+      $('#imgTagWrapperId img').attr('src') ||
+      null;
+
+    const currencyMatch = currentPrice && currentPrice.match(/₹|Rs\.?/);
+    const currency = currencyMatch ? currencyMatch[0] : '₹';
+
+    const numericPrice = currentPrice
+      ? parseFloat(currentPrice.replace(/[^0-9.]/g, ''))
+      : null;
 
     return {
-      title: title || 'N/A',
-      currentPrice: currentPrice || '0',
+      title,
+      currentPrice: numericPrice || 0, // prevent NOT NULL error
       image: image || '',
-      url
+      currency,
     };
-
   } catch (error) {
-    console.error('Scraping failed:', error.message);
-    throw new Error('Failed to scrape product details from Amazon.');
+    console.error("Scraping failed:", error.message);
+    return {
+      title: 'Unknown Product',
+      currentPrice: 0,       // Ensures database does not throw NOT NULL error
+      image: '',
+      currency: '₹',
+    };
   }
 }
