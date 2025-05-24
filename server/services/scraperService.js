@@ -1,5 +1,6 @@
 import axios from 'axios';
-import cheerio from 'cheerio';
+const cheerio = require('cheerio');
+
 
 export async function scrapeProductDetails(url) {
   try {
