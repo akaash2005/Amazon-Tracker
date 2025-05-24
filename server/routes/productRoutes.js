@@ -1,6 +1,6 @@
 import { scrapeProductDetails } from '../services/scraperService.js';
 import { dbHelpers } from '../database.js';
-import { v4 as uuidv4 } from 'uuidv';
+import { v4 as uuidv4 } from 'uuid';
 
 export function setupProductRoutes(app) {
   // Get all tracked products
