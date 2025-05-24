@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'crypto';
+import { v4 as uuidv4 } from 'uuidv';
 import { dbHelpers } from '../database.js';
 import { scrapeProductDetails } from './scraperService.js';
 
