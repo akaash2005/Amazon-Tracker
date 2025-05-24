@@ -1,35 +1,42 @@
-import sqlite3 from 'sqlite3';
-import { open } from 'sqlite';
+import Database from 'better-sqlite3';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const dbPath = join(__dirname, 'data', 'price_tracker.db');
+
+// Ensure data directory exists
+const dataDir = join(__dirname, 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir);
+}
 
 let db;
 
-export const initDB = async () => {
-  db = await open({
-    filename: './database.db',
-    driver: sqlite3.Database,
-  });
+export function getDb() {
+  if (!db) {
+    db = new Database(dbPath);
+    db.pragma('journal_mode = WAL');
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS products (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        url TEXT NOT NULL,
+        title TEXT NOT NULL,
+        current_price REAL NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+  }
+  return db;
+}
 
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS products (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      url TEXT NOT NULL,
-      title TEXT,
-      current_price REAL NOT NULL,
-      image TEXT,
-      currency TEXT
-    )
+export function createProduct(product) {
+  const db = getDb();
+  const stmt = db.prepare(`
+    INSERT INTO products (url, title, current_price) VALUES (?, ?, ?)
   `);
-};
-
-export const createProduct = async (product) => {
-  console.log('Inserting product:', product);
-  const { url, title, current_price, image, currency } = product;
-
-  const result = await db.run(
-    `INSERT INTO products (url, title, current_price, image, currency)
-     VALUES (?, ?, ?, ?, ?)`,
-    [url, title, current_price, image, currency]
-  );
-
-  return { id: result.lastID, ...product };
-};
+  stmt.run(product.url, product.title, product.current_price);
+}
